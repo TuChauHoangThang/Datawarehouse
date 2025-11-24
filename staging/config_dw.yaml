@@ -1,0 +1,50 @@
+staging_db:
+  host: localhost
+  port: 5432
+  dbname: staging_dw
+  user: postgres
+  password: 113004
+
+control_db:
+  host: localhost
+  port: 5432
+  dbname: control_dw
+  user: postgres
+  password: 113004
+
+dw_db:
+  host: localhost
+  port: 5432
+  dbname: data_warehouse
+  user: postgres
+  password: 113004
+
+sources:
+  twitch:
+    client_id: "v57pu9bys95ly24r50z23jx8zcjpgi"
+    access_token: "clufukh8s39710gfr6pwt2wqred0n0"
+    streams_url: "https://api.twitch.tv/helix/streams"
+    users_url: "https://api.twitch.tv/helix/users?"
+    games_url: "https://api.twitch.tv/helix/games?"
+    max_streams: 2000
+    page_size: 100
+    delay_seconds: 1
+    output_dir: "rawData"
+    output_filename: "twitch_streams_raw.csv"
+
+  youtube:
+    api_key: "AIzaSyD1ppswnn8WcwivbXEra9qzIUAtCvAhjKQ"
+    search_endpoint: "https://www.googleapis.com/youtube/v3/search"
+    videos_endpoint: "https://www.googleapis.com/youtube/v3/videos"
+    channels_endpoint: "https://www.googleapis.com/youtube/v3/channels"
+    search_queries:
+      - "gaming live"
+      - "game live"
+      - "live gameplay"
+    max_streams: 2000
+    region_code: "US"
+    video_category_id: "20"
+    search_delay_seconds: 1
+    detail_delay_seconds: 0.5
+    output_dir: "rawData"
+    output_filename: "youtube_streams_raw.csv"
