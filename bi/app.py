@@ -92,3 +92,107 @@ def summary_cards():
     finally:
         cur.close()
         conn.close()
+
+@app.route("/api/platform_breakdown")
+def platform_breakdown():
+    conn = get_connection()
+    cur = conn.cursor()
+    try:
+        cur.execute(
+            """
+            SELECT
+                p.platform_name,
+                COALESCE(SUM(f.viewers), 0) AS total_viewers,
+                COUNT(*) AS total_streams
+            FROM fact_stream_snapshot f
+            JOIN dim_platform p ON f.platform_id = p.platform_id
+            WHERE f.capture_time >= CURRENT_TIMESTAMP - INTERVAL '24 hours'
+            GROUP BY p.platform_name
+            ORDER BY total_viewers DESC;
+            """
+        )
+        rows = cur.fetchall()
+        data = [
+            {
+                "platform_name": row[0],
+                "viewers": row[1],
+                "streams": row[2],
+            }
+            for row in rows
+        ]
+        return jsonify(data)
+    finally:
+        cur.close()
+        conn.close()
+
+
+@app.route("/api/top_games_recent")
+def top_games_recent():
+    conn = get_connection()
+    cur = conn.cursor()
+    try:
+        cur.execute(
+            """
+            SELECT
+                g.game_name,
+                COALESCE(SUM(f.viewers), 0) AS total_viewers,
+                COUNT(*) AS total_streams
+            FROM fact_stream_snapshot f
+            JOIN dim_game g ON f.game_id = g.game_id
+            WHERE f.capture_time >= CURRENT_TIMESTAMP - INTERVAL '24 hours'
+            GROUP BY g.game_name
+            ORDER BY total_viewers DESC
+            LIMIT 15;
+            """
+        )
+        rows = cur.fetchall()
+        data = [
+            {
+                "game": row[0],
+                "viewers": row[1],
+                "streams": row[2],
+            }
+            for row in rows
+        ]
+        return jsonify(data)
+    finally:
+        cur.close()
+        conn.close()
+
+
+@app.route("/api/top_streamers_recent")
+def top_streamers_recent():
+    conn = get_connection()
+    cur = conn.cursor()
+    try:
+        cur.execute(
+            """
+            SELECT
+                s.streamer_name,
+                p.platform_name,
+                COALESCE(SUM(f.viewers), 0) AS total_viewers,
+                COUNT(*) AS total_streams
+            FROM fact_stream_snapshot f
+            JOIN dim_streamer s ON f.streamer_id = s.streamer_id
+            JOIN dim_platform p ON f.platform_id = p.platform_id
+            WHERE f.capture_time >= CURRENT_TIMESTAMP - INTERVAL '24 hours'
+            GROUP BY s.streamer_name, p.platform_name
+            ORDER BY total_viewers DESC
+            LIMIT 15;
+            """
+        )
+        rows = cur.fetchall()
+        data = [
+            {
+                "streamer": row[0],
+                "platform": row[1],
+                "viewers": row[2],
+                "streams": row[3],
+            }
+            for row in rows
+        ]
+        return jsonify(data)
+    finally:
+        cur.close()
+        conn.close()
+
