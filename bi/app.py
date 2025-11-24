@@ -295,3 +295,96 @@ def top_games():
     finally:
         cur.close()
         conn.close()
+
+@app.route("/api/last_update")
+def last_update():
+    """Trả về thời gian cập nhật dữ liệu cuối cùng"""
+    conn = get_connection()
+    cur = conn.cursor()
+    try:
+        cur.execute(
+            """
+            SELECT MAX(capture_time) AS last_capture_time,
+                   MAX(created_at) AS last_created_at
+            FROM fact_stream_snapshot
+            WHERE capture_time >= CURRENT_TIMESTAMP - INTERVAL '24 hours';
+            """
+        )
+        row = cur.fetchone()
+        # Xử lý datetime từ database
+        last_capture = None
+        last_created = None
+        if row and row[0]:
+            if hasattr(row[0], 'isoformat'):
+                last_capture = row[0].isoformat()
+            else:
+                last_capture = str(row[0])
+        if row and row[1]:
+            if hasattr(row[1], 'isoformat'):
+                last_created = row[1].isoformat()
+            else:
+                last_created = str(row[1])
+        
+        data = {
+            "last_capture_time": last_capture,
+            "last_created_at": last_created,
+            "server_time": datetime.now().isoformat()
+        }
+        return jsonify(data)
+    except Exception as e:
+        return jsonify({"error": str(e), "last_capture_time": None, "last_created_at": None, "server_time": datetime.now().isoformat()})
+    finally:
+        cur.close()
+        conn.close()
+
+
+@app.route("/api/etl/jobs")
+def etl_jobs():
+    """Lấy danh sách ETL jobs gần đây"""
+    if not CONTROL_AVAILABLE:
+        return jsonify({"error": "Control database not available", "jobs": []})
+    try:
+        jobs = get_recent_jobs(limit=50)
+        return jsonify({"jobs": jobs})
+    except Exception as e:
+        return jsonify({"error": str(e), "jobs": []})
+
+
+@app.route("/api/etl/batches")
+def etl_batches():
+    """Lấy danh sách batch runs gần đây"""
+    if not CONTROL_AVAILABLE:
+        return jsonify({"error": "Control database not available", "batches": []})
+    try:
+        batches = get_recent_batches(limit=50)
+        return jsonify({"batches": batches})
+    except Exception as e:
+        return jsonify({"error": str(e), "batches": []})
+
+
+@app.route("/api/etl/files")
+def etl_files():
+    """Lấy danh sách file audit logs"""
+    if not CONTROL_AVAILABLE:
+        return jsonify({"error": "Control database not available", "files": []})
+    try:
+        files = get_file_audit_logs(limit=100)
+        return jsonify({"files": files})
+    except Exception as e:
+        return jsonify({"error": str(e), "files": []})
+
+
+@app.route("/api/etl/statistics")
+def etl_statistics():
+    """Lấy thống kê tổng quan về ETL"""
+    if not CONTROL_AVAILABLE:
+        return jsonify({"error": "Control database not available", "statistics": {}})
+    try:
+        stats = get_etl_statistics()
+        return jsonify({"statistics": stats})
+    except Exception as e:
+        return jsonify({"error": str(e), "statistics": {}})
+
+
+if __name__ == "__main__":
+    app.run(debug=True, host="127.0.0.1", port=5000)
