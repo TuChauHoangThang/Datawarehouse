@@ -196,3 +196,102 @@ def top_streamers_recent():
         cur.close()
         conn.close()
 
+
+@app.route("/api/top_games_daily")
+def top_games_daily():
+    conn = get_connection()
+    cur = conn.cursor()
+    try:
+        cur.execute(
+            """
+            SELECT
+                g.game_name,
+                DATE(f.capture_time) AS capture_day,
+                COALESCE(SUM(f.viewers), 0) AS total_viewers,
+                COUNT(*) AS total_streams
+            FROM fact_stream_snapshot f
+            JOIN dim_game g ON f.game_id = g.game_id
+            WHERE f.capture_time >= CURRENT_DATE - INTERVAL '14 days'
+            GROUP BY g.game_name, DATE(f.capture_time)
+            ORDER BY capture_day DESC, total_viewers DESC
+            LIMIT 100;
+            """
+        )
+        rows = cur.fetchall()
+        data = [
+            {
+                "game": row[0],
+                "day": row[1].isoformat() if row[1] else None,
+                "viewers": row[2],
+                "streams": row[3],
+            }
+            for row in rows
+        ]
+        return jsonify(data)
+    finally:
+        cur.close()
+        conn.close()
+
+
+@app.route("/api/viewer_trends")
+def viewer_trends():
+    conn = get_connection()
+    cur = conn.cursor()
+    try:
+        cur.execute(
+            """
+            SELECT
+                DATE_TRUNC('hour', capture_time) AS time_bucket,
+                COALESCE(SUM(viewers), 0) AS total_viewers,
+                COUNT(*) AS stream_count
+            FROM fact_stream_snapshot
+            WHERE capture_time >= CURRENT_TIMESTAMP - INTERVAL '24 hours'
+            GROUP BY DATE_TRUNC('hour', capture_time)
+            ORDER BY time_bucket;
+            """
+        )
+        rows = cur.fetchall()
+        data = [
+            {
+                "time": row[0].isoformat() if row[0] else None,
+                "viewers": row[1],
+                "streams": row[2],
+            }
+            for row in rows
+        ]
+        return jsonify(data)
+    finally:
+        cur.close()
+        conn.close()
+
+
+@app.route("/api/top_games")
+def top_games():
+    conn = get_connection()
+    cur = conn.cursor()
+    try:
+        cur.execute(
+            """
+            SELECT
+                g.game_name,
+                COALESCE(SUM(f.viewers), 0) AS total_viewers
+            FROM fact_stream_snapshot f
+            JOIN dim_game g ON f.game_id = g.game_id
+            WHERE f.capture_time >= CURRENT_TIMESTAMP - INTERVAL '24 hours'
+            GROUP BY g.game_name
+            ORDER BY total_viewers DESC
+            LIMIT 10;
+            """
+        )
+        rows = cur.fetchall()
+        data = [
+            {
+                "game": row[0],
+                "viewers": row[1],
+            }
+            for row in rows
+        ]
+        return jsonify(data)
+    finally:
+        cur.close()
+        conn.close()
